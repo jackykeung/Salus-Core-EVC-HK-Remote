@@ -1,6 +1,6 @@
 {
   "name": "salus-core-evc-hk-remote",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Independent hobby web client to monitor and control a Salus Core EV Charger over its on-device web API (AP mode, Hong Kong). Reverse-engineered. Not affiliated with Salus. No warranty.",
   "private": true,
   "type": "commonjs",

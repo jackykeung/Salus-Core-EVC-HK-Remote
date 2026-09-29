@@ -122,11 +122,29 @@ Uses Node's native test runner. No dependencies to install.
 
 ## Using it on your phone
 
-1. Put the phone on the charger's Wi-Fi (AP mode).
-2. Serve these files over **plain http** (or open as a local file). The charger
-   speaks plain `http://`; if you serve over `https`, Safari blocks the
-   `fetch("http://192.168.3.1/…")` calls (mixed content).
-3. Add to Home Screen in Safari to launch full-screen (PWA meta tags included).
+The dashboard is a **single self-contained file** — `evx-core.js` is inlined, so
+`evc-dashboard.html` is the **only** file you need to move to the phone.
+
+**Easiest — AirDrop (no server at all):**
+
+1. AirDrop `evc-dashboard.html` to your iPhone and open it in Safari.
+   A `file://` page is not subject to mixed-content blocking, so it reaches the
+   charger's `http://192.168.3.1/…` API fine as long as the phone is on the
+   charger's Wi-Fi.
+2. **Home Screen install:** Safari → Share → **Add to Home Screen** (PWA meta
+   tags included) to launch it full-screen standalone.
+3. **Theme:** the header button is a clean 2-state toggle (dark ⇄ light); the
+   first run follows your system setting, each tap flips + persists it.
+4. **Live control requires the phone to be on the charger's Wi-Fi** (AP mode).
+   The base URL is absolute, so the page need not live on the charger itself —
+   but the phone must be connected to the charger's AP (`SalusCore_…`).
+
+**Alternative — serve locally:** `npm run mock` serves the mock API + dashboard
+at `http://127.0.0.1:8080` for offline preview.
+
+> ⚠️ **Mixed content:** the charger speaks plain `http://`. If you instead host
+> the page over `https`, Safari blocks the `fetch("http://192.168.3.1/…")`
+> calls. Use AirDrop (local file) or serve over plain `http` for live control.
 
 The base URL defaults to `http://192.168.3.1/evcWebApp/` and is editable.
 

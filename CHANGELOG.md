@@ -13,9 +13,32 @@ License: MIT (see LICENSE)
 ## [Unreleased]
 
 ### Planned
-- Live telemetry dashboard with configurable polling interval.
 - Optional read-only mode that never sends a write command.
-- Additional transport tests covering the two POST conventions.
+- Configurable telemetry polling interval.
+
+---
+
+## [1.2.0] - 2026-09-29
+
+### Added
+- **Fully self-contained single-file dashboard.** `evx-core.js` is now inlined
+  into `evc-dashboard.html`, so the dashboard is the *only* file you need to
+  deploy. Enabled a zero-server **AirDrop workflow**: AirDrop
+  `evc-dashboard.html` to an iPhone, open in Safari, and it runs as a local
+  `file://` page (not subject to mixed-content blocking, so it reaches the
+  charger's plain-`http://` API when the phone is on the charger's Wi-Fi).
+- **Improved theme toggle**: the header is now a clean 2-state dark ⇄ light
+  toggle; first run follows the OS setting, each tap flips and persists.
+- README documents the AirDrop / single-file deployment and the mixed-content
+  behaviour for `file://` vs https-hosted pages.
+
+### Changed
+- Deployable footprint reduced to a single HTML file (no server required).
+- `evx-core.js` `VERSION` and `package.json` bumped to `1.2.0`.
+
+### Fixed
+- Clarified that a `file://` (AirDrop) page is *not* subject to Safari's
+  mixed-content blocking, correcting the earlier guidance.
 
 ---
 
@@ -62,6 +85,7 @@ License: MIT (see LICENSE)
   native test runner with coverage).
 - MIT LICENSE and this CHANGELOG.
 
-[Unreleased]: https://github.com/jackykeung/Salus-Core-EVC-HK-Remote/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/jackykeung/Salus-Core-EVC-HK-Remote/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/jackykeung/Salus-Core-EVC-HK-Remote/commits/main
 [1.1.0]: https://github.com/jackykeung/Salus-Core-EVC-HK-Remote/commits/main
 [1.0.0]: https://github.com/jackykeung/Salus-Core-EVC-HK-Remote
