@@ -1,0 +1,18 @@
+# OS junk
+.DS_Store
+Thumbs.db
+__MACOSX/
+
+# Node
+node_modules/
+*.log
+npm-debug.log*
+
+# Local data
+tests/*.db
+*.sqlite
+
+# Editor
+.vscode/
+.idea/
+*.swp

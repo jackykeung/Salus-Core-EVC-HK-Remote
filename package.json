@@ -1,0 +1,16 @@
+{
+  "name": "evc-charger-client",
+  "version": "1.0.0",
+  "description": "Reverse-engineered client for the Salus Core EV Charger web API (AP mode).",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "test": "node --test --experimental-test-coverage tests/",
+    "test:core": "node --test --experimental-test-coverage tests/client.test.js",
+    "test:dash": "node --test tests/dashboard.test.js",
+    "mock": "node tests/mock-server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

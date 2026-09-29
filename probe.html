@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0b0f14">
+<title>EVC Probe</title>
+<style>
+  :root{
+    --bg:#0b0f14; --card:rgba(255,255,255,0.05); --cardBg:#151c24; --line:#26303c;
+    --txt:#e8f0f5; --sub:#8fa3b0; --acc:#10ff9f; --blue:#107fff; --red:#ff4d4d;
+    --ok:#10ff9f; --fail:#ff4d4d; --warn:#ffcc00;
+    --safe-top:env(safe-area-inset-top,0px); --safe-bot:env(safe-area-inset-bottom,0px);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
+  body{margin:0;background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    padding:calc(14px + var(--safe-top)) 14px calc(14px + var(--safe-bot));}
+  h1{font-size:20px;margin:0 0 4px;letter-spacing:.5px;}
+  h1 span{color:var(--acc);}
+  .sub{color:var(--sub);font-size:12px;margin-bottom:16px;}
+  label{display:block;font-size:12px;color:var(--sub);margin:0 0 6px;}
+  .row{display:flex;gap:8px;align-items:center;}
+  input[type=text]{flex:1;background:var(--cardBg);color:var(--txt);border:1px solid var(--line);
+    border-radius:10px;padding:12px;font-size:15px;min-width:0;}
+  .btn{background:var(--blue);color:#fff;border:none;border-radius:10px;padding:12px 14px;font-size:14px;font-weight:600;cursor:pointer;min-height:44px;}
+  .btn:active{opacity:.6;}
+  .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--txt);}
+  .section-title{font-size:12px;color:var(--acc);letter-spacing:1.5px;text-transform:uppercase;margin:22px 0 10px;}
+  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
+  .grid .btn{width:100%;}
+  .ep{background:var(--cardBg);border:1px solid var(--line);border-radius:10px;padding:14px;}
+  .ep h3{margin:0 0 8px;font-size:15px;display:flex;align-items:center;justify-content:space-between;}
+  .tag{font-size:10px;padding:2px 6px;border-radius:6px;font-family:monospace;font-weight:600;color:#fff;}
+  .tag.get{background:#2f855a;} .tag.post{background:#6b4fb3;}
+  .badge{font-size:11px;font-weight:700;padding:2px 8px;border-radius:8px;margin-left:8px;}
+  .badge.ok{background:rgba(16,255,159,.15);color:var(--ok);} .badge.fail{background:rgba(255,77,77,.15);color:var(--fail);} .badge.na{background:rgba(255,204,0,.12);color:var(--warn);}
+  pre{background:#06090c;border:1px solid var(--line);border-radius:8px;padding:10px;font-size:11px;line-height:1.35;
+    overflow:auto;max-height:180px;white-space:pre-wrap;word-break:break-all;font-family:ui-monospace,Menlo,monospace;}
+  details{margin-top:10px;border:1px solid var(--line);border-radius:10px;overflow:hidden;}
+  summary{background:var(--cardBg);padding:12px;font-weight:600;cursor:pointer;}
+  details[open] summary{border-bottom:1px solid var(--line);}
+  .formp{display:flex;gap:8px;margin:10px 0;align-items:center;flex-wrap:wrap;}
+  .formp input{flex:1;min-width:100px;}
+  .note{color:var(--sub);font-size:11px;margin-top:8px;}
+  .mono{font-family:ui-monospace,Menlo,monospace;font-size:12px;}
+</style>
+</head>
+<body>
+  <h1>EV<span>C</span> Probe</h1>
+  <div class="sub">Reverse-engineered client for the Salus Core EV Charger. Live endpoint probe.</div>
+
+  <label for="base">Base URL</label>
+  <div class="row">
+    <input id="base" type="text" spellcheck="false" autocomplete="off" value="http://192.168.3.1/evcWebApp/">
+    <button id="saveBase" class="btn ghost">Save</button>
+  </div>
+
+  <div class="section-title">GET endpoints</div>
+  <div class="grid" id="getGrid"></div>
+
+  <div class="section-title">POST — in-header mode</div>
+  <div id="postGrid" class="grid"></div>
+
+  <details id="rawPost" style="margin-top:14px;">
+    <summary>Custom POST (header or body)</summary>
+    <div class="ep" style="margin-top:10px;">
+      <label for="cpEndpoint">Endpoint (relative)</label>
+      <input id="cpEndpoint" type="text" value="chargeRemote">
+      <label for="cpKey" style="margin-top:10px;">Header key</label>
+      <input id="cpKey" type="text" value="XDATA">
+      <label for="cpVal" style="margin-top:10px;">Header value</label>
+      <input id="cpVal" type="text" value="1">
+      <div class="row" style="margin-top:12px;">
+        <button id="cpSend" class="btn">POST (header)</button>
+        <button id="cpBody" class="btn ghost">POST (body)</button>
+      </div>
+      <pre id="cpResult">—</pre>
+      <div class="note">Header mode merges key/value into HTTP headers (matches the device's real POST convention). Body mode sends the value as a raw JSON body string.</div>
+    </div>
+  </details>
+
+  <div class="section-title">Output</div>
+  <pre id="output">Ready. Select an endpoint to probe.</pre>
+
+  <script src="evx-core.js"></script>
+  <script>
+  (function(){
+    var C = (window.EvxCore || {});
+    var output = document.getElementById('output');
+    var baseEl = document.getElementById('base');
+
+    // load saved base
+    try { var s = localStorage.getItem('evx_base'); if (s) baseEl.value = s; } catch(e){}
+
+    document.getElementById('saveBase').addEventListener('click', function(){
+      try { localStorage.setItem('evx_base', baseEl.value.trim()); } catch(e){}
+      setOut('Base saved: ' + C.normalizeBaseUrl(baseEl.value));
+    });
+
+    function setOut(text){
+      output.textContent = text;
+    }
+    function setBadge(el, kind, txt){ el.className = 'badge ' + kind; el.textContent = txt; }
+
+    function doGet(name, btn){
+      var b = C.normalizeBaseUrl(baseEl.value);
+      var url = C.endpointUrl(b, name);
+      var badge = btn.querySelector('.badge');
+      setBadge(badge, 'na', '…');
+      var t0 = Date.now();
+      fetch(url, { cache:'no-store' })
+        .then(function(r){
+          var ms = Date.now()-t0;
+          if (r.status === 302){ setBadge(badge,'na','302'); setOut('['+name+'] 302 redirect\n'+url); return; }
+          return r.text().then(function(txt){
+            var json = C.tryParseJson(txt);
+            if (!json){ setBadge(badge,'fail','non-JSON'); setOut('['+name+'] '+r.status+' '+ms+'ms\n'+url+'\n\nRAW (not JSON):\n'+txt); return; }
+            setBadge(badge, r.ok?'ok':'fail', r.status+' '+ms+'ms');
+            setOut('['+name+'] '+r.status+' '+ms+'ms\n'+url+'\n\n'+JSON.stringify(json,null,2));
+          });
+        })
+        .catch(function(e){ setBadge(badge,'fail','err'); setOut('['+name+'] ERROR\n'+url+'\n\n'+e); });
+    }
+
+    function doPost(name, btn, data){
+      var b = C.normalizeBaseUrl(baseEl.value);
+      var url = C.endpointUrl(b, name);
+      var badge = btn.querySelector('.badge');
+      setBadge(badge,'na','…');
+      var opts = C.buildHeaderPost(data);
+      fetch(url, { method:'POST', headers:opts.headers, body:JSON.stringify(opts.body), cache:'no-store' })
+        .then(function(r){
+          return r.text().then(function(txt){
+            var json = C.tryParseJson(txt);
+            setBadge(badge, r.ok?'ok':'fail', r.status);
+            setOut('['+name+'] POST '+r.status+'\n'+url+'\nheaders='+JSON.stringify(opts.headers)+'\n\n'+(json?JSON.stringify(json,null,2):txt));
+          });
+        })
+        .catch(function(e){ setBadge(badge,'fail','err'); setOut('['+name+'] ERROR\n'+url+'\n\n'+e); });
+    }
+
+    var GETS = ['status','setting','meters','chargeAvailable','general','history','log',
+                'schedule','profile','loadManagement','diagnostic','infoTime','nfcList'];
+    var POSTS = [
+      {name:'chargeRemote', data:{XDATA:1}, label:'Remote START'},
+      {name:'chargeRemote', data:{XDATA:0}, label:'Remote STOP'},
+      {name:'chargeAvailable', data:{XDATA:1}, label:'Unlock'},
+      {name:'chargeAvailable', data:{XDATA:0}, label:'Lock'},
+      {name:'diagnostic', data:{start:1}, label:'Diagnose'}
+    ];
+
+    var getGrid = document.getElementById('getGrid');
+    GETS.forEach(function(n){
+      var btn = document.createElement('button');
+      btn.className = 'btn';
+      btn.innerHTML = n + '<span class="badge na">—</span>';
+      btn.addEventListener('click', function(){ doGet(n, btn); });
+      getGrid.appendChild(btn);
+    });
+
+    var postGrid = document.getElementById('postGrid');
+    POSTS.forEach(function(p){
+      var btn = document.createElement('button');
+      btn.className = 'btn';
+      btn.style.background = (p.data && p.data.XDATA===0) ? 'var(--red)' : 'var(--blue)';
+      btn.innerHTML = p.label + '<span class="badge na">—</span>';
+      btn.addEventListener('click', function(){ doPost(p.name, btn, p.data); });
+      postGrid.appendChild(btn);
+    });
+
+    // custom POST
+    document.getElementById('cpSend').addEventListener('click', function(){
+      var name = document.getElementById('cpEndpoint').value.trim();
+      var k = document.getElementById('cpKey').value.trim();
+      var v = document.getElementById('cpVal').value;
+      if(!name){ return; }
+      var d = {}; d[k] = v;
+      var b = C.normalizeBaseUrl(baseEl.value);
+      var url = C.endpointUrl(b, name);
+      var opts = C.buildHeaderPost(d);
+      document.getElementById('cpResult').textContent = 'POST ' + url + '\n' + JSON.stringify(opts,null,2);
+      fetch(url, { method:'POST', headers:opts.headers, body:JSON.stringify(opts.body), cache:'no-store' })
+        .then(function(r){ return r.text(); })
+        .then(function(t){ document.getElementById('cpResult').textContent += '\n\n' + t; })
+        .catch(function(e){ document.getElementById('cpResult').textContent += '\n\nERROR ' + e; });
+    });
+    document.getElementById('cpBody').addEventListener('click', function(){
+      var name = document.getElementById('cpEndpoint').value.trim();
+      var v = document.getElementById('cpVal').value;
+      if(!name){ return; }
+      var b = C.normalizeBaseUrl(baseEl.value);
+      var url = C.endpointUrl(b, name);
+      var opts = C.buildBodyPost(v);
+      document.getElementById('cpResult').textContent = 'POST ' + url + '\n' + JSON.stringify(opts,null,2);
+      fetch(url, { method:'POST', headers:opts.headers, body:opts.body, cache:'no-store' })
+        .then(function(r){ return r.text(); })
+        .then(function(t){ document.getElementById('cpResult').textContent += '\n\n' + t; })
+        .catch(function(e){ document.getElementById('cpResult').textContent += '\n\nERROR ' + e; });
+    });
+  })();
+  </script>
+</body>
+</html>

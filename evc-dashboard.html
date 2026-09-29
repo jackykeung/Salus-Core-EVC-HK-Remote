@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="EVC Charger">
+<meta name="theme-color" content="#0b0f14">
+<meta name="description" content="EV Charger control dashboard">
+<title>EVC Charger</title>
+<style>
+  /* ===== theme ===== */
+  :root{
+    --safe-top:env(safe-area-inset-top,0px);
+    --safe-bot:env(safe-area-inset-bottom,0px);
+    --nav-h:64px;
+    --radius:16px;
+    --pad:16px;
+    --line:#e3e8ed;
+    --bg:#eef2f5;
+    --card:#ffffff;
+    --txt:#151c24;
+    --sub:#6b7a86;
+    --acc:#0aa06e;
+    --acc2:#107fff;
+    --danger:#e5484d;
+    --warn:#b98900;
+    --glass:rgba(255,255,255,0.72);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --line:#26303c;
+      --bg:#0b0f14;
+      --card:#151c24;
+      --txt:#e8f0f5;
+      --sub:#8fa3b0;
+      --acc:#10ff9f;
+      --acc2:#4a9dff;
+      --danger:#ff5c5c;
+      --warn:#ffcc00;
+      --glass:rgba(21,28,36,0.72);
+    }
+  }
+  /* manual override */
+  :root[data-theme="light"]{
+    --line:#e3e8ed; --bg:#eef2f5; --card:#ffffff; --txt:#151c24; --sub:#6b7a86;
+    --acc:#0aa06e; --acc2:#107fff; --danger:#e5484d; --warn:#b98900; --glass:rgba(255,255,255,0.72);
+  }
+  :root[data-theme="dark"]{
+    --line:#26303c; --bg:#0b0f14; --card:#151c24; --txt:#e8f0f5; --sub:#8fa3b0;
+    --acc:#10ff9f; --acc2:#4a9dff; --danger:#ff5c5c; --warn:#ffcc00; --glass:rgba(21,28,36,0.72);
+  }
+
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
+  html,body{height:100%;}
+  body{margin:0;background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding-bottom:calc(var(--nav-h) + var(--safe-bot));}
+  a{color:var(--acc2);}
+  button{font-family:inherit;cursor:pointer;border:none;}
+
+  /* top bar */
+  .topbar{
+    position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;
+    padding:calc(12px + var(--safe-top)) var(--pad) 12px;
+    background:var(--glass);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+    border-bottom:1px solid var(--line);
+  }
+  .brand{display:flex;align-items:center;gap:10px;}
+  .logo{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;background:linear-gradient(135deg,var(--acc),var(--acc2));}
+  .brand h1{font-size:17px;margin:0;font-weight:700;letter-spacing:.3px;}
+  .brand .s{font-size:10px;color:var(--sub);display:block;margin-top:1px;}
+  .headactions{display:flex;align-items:center;gap:8px;}
+  .statuspill{font-size:11px;font-weight:700;padding:4px 8px;border-radius:20px;border:1px solid var(--line);color:var(--sub);white-space:nowrap;}
+  .statuspill.ok{color:var(--acc);border-color:var(--acc);}
+  .statuspill.err{color:var(--danger);border-color:var(--danger);}
+  .iconbtn{width:40px;height:40px;border-radius:12px;background:var(--card);border:1px solid var(--line);color:var(--txt);font-size:18px;display:flex;align-items:center;justify-content:center;}
+  .iconbtn:active{opacity:.6;}
+
+  /* bottom nav */
+  .navbar{
+    position:fixed;bottom:0;left:0;right:0;z-index:20;height:calc(var(--nav-h) + var(--safe-bot));
+    padding-bottom:var(--safe-bot);display:flex;background:var(--glass);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+    border-top:1px solid var(--line);
+  }
+  .navitem{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--sub);font-size:10px;font-weight:600;background:none;}
+  .navitem .ic{font-size:20px;line-height:1;}
+  .navitem.active{color:var(--acc);}
+
+  /* page */
+  .page{display:none;padding:16px var(--pad) 20px;}
+  .page.active{display:block;}
+  .pagetitle{font-size:13px;color:var(--sub);font-weight:600;margin:0 0 12px;letter-spacing:.3px;}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:14px;}
+  .card h2{margin:0 0 12px;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:space-between;}
+  .muted{color:var(--sub);font-size:12px;}
+
+  /* charge toggle */
+  .chargetoggle{width:100%;height:120px;border-radius:var(--radius);font-size:22px;font-weight:700;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;transition:background .25s;}
+  .chargetoggle .big{font-size:36px;line-height:1;}
+  .chargetoggle.start{background:linear-gradient(135deg,#13b26b,#0aa06e);}
+  .chargetoggle.stop{background:linear-gradient(135deg,#f05252,#e5484d);}
+  .chargetoggle:active{opacity:.85;}
+
+  /* meters grid */
+  .meters{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
+  .meter{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px;text-align:center;}
+  .meter .mname{font-size:11px;color:var(--sub);font-weight:600;}
+  .meter .mval{font-size:24px;font-weight:700;color:var(--acc2);font-variant-numeric:tabular-nums;margin-top:5px;}
+  .meter .munit{font-size:12px;color:var(--sub);margin-left:2px;}
+
+  /* chart */
+  canvas.chart{width:100%;height:110px;display:block;margin-top:10px;}
+
+  /* controls */
+  .ctlrow{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--line);}
+  .ctlrow:last-child{border-bottom:none;}
+  .ctlrow .lbl{font-size:14px;font-weight:600;}
+  .ctlrow .dsub{font-size:11px;color:var(--sub);margin-top:2px;}
+  .ctlrow .right{display:flex;gap:8px;align-items:center;}
+  select,input[type=number],input[type=time],input[type=text]{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;color:var(--txt);font-size:14px;min-width:0;}
+  input[type=number],input[type=time]{width:90px;}
+  .btn{background:var(--acc2);color:#fff;border-radius:10px;padding:11px 16px;font-size:14px;font-weight:600;min-height:44px;}
+  .btn.grn{background:var(--acc);} .btn.red{background:var(--danger);} .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--txt);}
+  .btn.sm{padding:8px 12px;font-size:13px;min-height:38px;}
+  .btn:active{opacity:.6;}
+  .btn.wide{width:100%;margin-top:10px;}
+
+  /* switch */
+  .switch{width:52px;height:30px;border-radius:30px;background:#bfc8d1;position:relative;flex:none;transition:background .2s;}
+  .switch::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.3);}
+  .switch.on{background:var(--acc);}
+  .switch.on::after{left:25px;}
+
+  /* tables */
+  table{width:100%;border-collapse:collapse;font-size:12px;}
+  th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);white-space:nowrap;}
+  th{color:var(--sub);font-size:11px;font-weight:700;}
+  .scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+
+  /* schedule editor */
+  .schedrow{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px;}
+  .schedbody.locked{opacity:.4;pointer-events:none;}
+
+  /* dev */
+  .warnbox{background:rgba(255,204,0,.12);border:1px solid var(--warn);color:var(--txt);border-radius:10px;padding:12px;font-size:12px;margin-bottom:12px;}
+  .grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
+  .devcat{margin-bottom:18px;}
+  .devcat h3{font-size:13px;color:var(--acc);margin:0 0 8px;text-transform:uppercase;letter-spacing:1px;}
+  input[type=range]{width:100%;accent-color:var(--acc);}
+  .diaggrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:10px;}
+  .diagitem{border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center;}
+  .diagitem .dn{font-size:11px;color:var(--sub);}
+  .diagitem .dv{font-size:18px;font-weight:700;margin-top:3px;}
+  .diagitem .dv.pass{color:var(--acc);} .diagitem .dv.fail{color:var(--danger);} .diagitem .dv.unknown{color:var(--sub);}
+
+  .toast{position:fixed;left:50%;bottom:calc(var(--nav-h) + var(--safe-bot) + 16px);transform:translateX(-50%);background:#151c24;color:#fff;padding:12px 18px;border-radius:12px;font-size:13px;font-weight:600;z-index:50;box-shadow:0 4px 20px rgba(0,0,0,.3);opacity:0;transition:opacity .2s;pointer-events:none;max-width:90%;text-align:center;}
+  .toast.show{opacity:1;}
+  .toast.err{background:#e5484d;} .toast.ok{background:#0aa06e;}
+  .spacer{height:4px;}
+  .row{display:flex;gap:8px;align-items:center;}
+</style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div class="brand">
+      <div class="logo">⚡</div>
+      <div><h1>EV Charger<span class="s">Salus Core</span></h1></div>
+    </div>
+    <div class="headactions">
+      <span id="statusPill" class="statuspill">Offline</span>
+      <button id="themeBtn" class="iconbtn" title="Toggle theme">◐</button>
+    </div>
+  </div>
+
+  <!-- ===================== STATUS ===================== -->
+  <div class="page active" id="page-status">
+    <div class="card">
+      <h2>Charge control</h2>
+      <div class="warnbox" id="chargeNote">
+        Remote start may be gated by NFC authentication. If the charger is in NFC-auth
+        mode, enable NFC Bypass under <b>Dev</b> and verify behavior via the probe.
+      </div>
+      <button id="chargeMain" class="chargetoggle start">
+        <span class="big">▶</span><span class="t">Start Charging</span>
+      </button>
+      <div class="spacer"></div>
+      <div class="row" style="justify-content:space-between;margin-top:8px;">
+        <span class="muted" id="chargeStateText">Status: unknown</span>
+        <span class="muted mono" id="chargeLastAction"></span>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Live meters <button class="btn sm ghost" id="refreshMeters">Refresh</button></h2>
+      <div class="meters" id="meterGrid"></div>
+      <canvas class="chart" id="energyChart" height="110"></canvas>
+    </div>
+    <div class="card">
+      <h2>Device time</h2>
+      <div class="row" style="justify-content:space-between;">
+        <span id="deviceTime" class="mono" style="font-size:22px;font-weight:700;">--:--</span>
+        <button class="btn sm" id="syncTime">Sync</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== CONTROL ===================== -->
+  <div class="page" id="page-control">
+    <div class="card">
+      <h2>Availability</h2>
+      <div class="ctlrow">
+        <div><div class="lbl">Charger unlocked</div><div class="dsub">Allows cable release</div></div>
+        <div id="availSwitch" class="switch"></div>
+      </div>
+    </div>
+
+    <div class="card" id="phaseCard">
+      <h2>Phase</h2>
+      <div class="ctlrow">
+        <div><div class="lbl">Charger phase</div><div class="dsub">Single or three phase</div></div>
+        <div class="right">
+          <select id="phaseSel"><option value="1">Single</option><option value="3">3 Phase</option></select>
+          <button class="btn sm" id="phaseApply">Set</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Logo color</h2>
+      <div class="ctlrow">
+        <div><div class="lbl">Charger LED logo</div><div id="logoPreview" class="dsub" style="font-weight:700;">—</div></div>
+        <div class="right">
+          <select id="logoSel"></select>
+          <button class="btn sm" id="logoApply">Set</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Load management</h2>
+      <div class="warnbox" id="lmWarn" style="display:none;">Dynamic load balancing needs a CT clamp (not detected).</div>
+      <div class="ctlrow">
+        <div><div class="lbl">Mode</div></div>
+        <div class="right">
+          <select id="lmMode"><option value="0">Off</option><option value="1">Manual</option><option value="2">Dynamic</option></select>
+          <button class="btn sm" id="lmApply">Apply</button>
+        </div>
+      </div>
+      <div class="ctlrow" id="lmLimitRow">
+        <div><div class="lbl">Current limit</div><div class="dsub" id="lmLimitVal"></div></div>
+        <input type="range" id="lmSlider" min="6" max="32" value="12">
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== SCHEDULE ===================== -->
+  <div class="page" id="page-schedule">
+    <div class="card">
+      <h2>Schedule <button class="btn sm ghost" id="schedRefresh">Refresh</button></h2>
+      <div class="muted" id="schedHint"></div>
+    </div>
+    <div class="card">
+      <h2>Boost <span class="muted">charge now → stop</span></h2>
+      <div class="ctlrow">
+        <div><div class="lbl">Enabled</div></div>
+        <div id="boostSwitch" class="switch"></div>
+      </div>
+      <div class="ctlrow">
+        <div><div class="lbl">Stop time</div></div>
+        <input type="time" id="boostStop">
+      </div>
+      <div class="ctlrow">
+        <div><div class="lbl">Current (A)</div></div>
+        <input type="number" id="boostCurrent" min="1" value="7">
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Core schedule</h2>
+      <div class="schedbody" id="coreBody"></div>
+    </div>
+
+    <div class="card" id="solarCard">
+      <h2>Solar schedule</h2>
+      <div class="schedbody" id="solarBody"></div>
+    </div>
+
+    <div class="card">
+      <button class="btn wide" id="schedSave">Save schedule</button>
+    </div>
+  </div>
+
+  <!-- ===================== HISTORY ===================== -->
+  <div class="page" id="page-history">
+    <div class="card">
+      <h2>Charging history <button class="btn sm ghost" id="histRefresh">Refresh</button></h2>
+      <div class="scrollx"><table id="histTable"><thead></thead><tbody></tbody></table></div>
+      <div class="muted" id="histEmpty" style="margin-top:8px;"></div>
+    </div>
+    <div class="card">
+      <h2>Charger log <button class="btn sm ghost" id="logRefresh">Refresh</button></h2>
+      <div class="scrollx"><table id="logTable"><thead></thead><tbody></tbody></table></div>
+      <div class="muted" id="logEmpty" style="margin-top:8px;"></div>
+    </div>
+  </div>
+
+  <!-- ===================== DATA ===================== -->
+  <div class="page" id="page-data">
+    <div class="card">
+      <h2>Data capture</h2>
+      <div class="row" style="justify-content:space-between;margin-bottom:8px;">
+        <div><div class="lbl">Auto-captured samples</div><div class="muted" id="dataCount"></div></div>
+        <div class="iconbtn" id="captureToggle" title="pause capture">⏸</div>
+      </div>
+      <div class="muted" id="dataInfo">Capturing meter snapshots to local storage (ring buffer).</div>
+      <button class="btn grn wide" id="exportCsv">Export CSV</button>
+      <button class="btn wide" id="exportJson">Export JSON</button>
+      <button class="btn red wide" id="clearData">Clear data</button>
+    </div>
+  </div>
+
+  <!-- ===================== DEV ===================== -->
+  <div class="page" id="page-dev">
+    <div class="card"><h2>Developer / Advanced</h2>
+      <div class="warnbox">These features are hidden in the factory UI. Some are experimental —
+        use with care. Settings you change here are applied to the charger immediately.</div>
+    </div>
+
+    <div class="devcat">
+      <div class="card"><h3>NFC bypass <span class="muted">dev</span></h3>
+        <div class="ctlrow">
+          <div><div class="lbl">Bypass NFC authentication</div><div class="dsub">Lets remote start stop work without a card</div></div>
+          <div id="bypassSwitch" class="switch"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="devcat">
+      <div class="card"><h3>Random delay <span class="muted">optional</span></h3>
+        <div class="ctlrow">
+          <div><div class="lbl">Random delay (s)</div></div>
+          <div class="right">
+            <select id="rdSel"></select>
+            <button class="btn sm" id="rdApply">Apply</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="devcat">
+      <div class="card"><h3>Dynamic load balancing <span class="muted">optional</span></h3>
+        <div class="warnbox" id="dlbWarn" style="display:none;">CT clamp not detected — Dynamic may be rejected by the device.</div>
+        <div class="ctlrow">
+          <div><div class="lbl">Percentage</div><div class="dsub" id="dlbVal">50%</div></div>
+          <input type="range" id="dlbSlider" min="0" max="100" value="50">
+        </div>
+        <button class="btn sm wide" id="dlbApply">Apply dynamic %</button>
+      </div>
+    </div>
+
+    <div class="devcat">
+      <div class="card"><h3>Diagnostics</h3>
+        <button class="btn wide" id="diagStart">Run diagnostics</button>
+        <div class="diaggrid" id="diagGrid"></div>
+      </div>
+    </div>
+
+    <div class="devcat">
+      <div class="card"><h3>Debug — LED PWM <span class="muted">advanced</span></h3>
+        <div class="warnbox">Sets the charger's LED PWM directly (0–8180).</div>
+        <div class="grid2">
+          <div><div class="muted">Red</div><input type="number" id="pwmR" min="0" max="8180" value="1000"></div>
+          <div><div class="muted">Green</div><input type="number" id="pwmG" min="0" max="8180" value="1000"></div>
+          <div><div class="muted">Blue</div><input type="number" id="pwmL" min="0" max="8180" value="1000"></div>
+        </div>
+        <button class="btn wide" id="pwmApply">Apply PWM</button>
+      </div>
+    </div>
+
+    <div class="devcat">
+      <div class="card"><h3>Profiles <span class="muted">advanced</span></h3>
+        <div id="profileBody"></div>
+        <button class="btn wide" id="profileSave">Save profiles</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- bottom nav -->
+  <nav class="navbar" id="navbar">
+    <button class="navitem active" data-page="status"><span class="ic">⚡</span>Status</button>
+    <button class="navitem" data-page="control"><span class="ic">☰</span>Control</button>
+    <button class="navitem" data-page="schedule"><span class="ic">🕒</span>Schedule</button>
+    <button class="navitem" data-page="history"><span class="ic">📋</span>History</button>
+    <button class="navitem" data-page="data"><span class="ic">⬇</span>Data</button>
+    <button class="navitem" data-page="dev"><span class="ic">⚙</span>Dev</button>
+  </nav>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="evx-core.js"></script>
+  <script>
+  (function(){
+    "use strict";
+    var C = window.EvxCore || {};
+    var base = localStorage.getItem('evx_base') || C.DEFAULT_BASE;
+    var END = C.ENDPOINTS;
+    var ring = C.createRingBuffer(5000);
+    var state = {
+      status: null, meters: {}, profile: [], schedule: [], loadMgmt: {},
+      general: {}, supportlist: {}, chargingNow: false, diagRunning: false,
+      hist: [], log: [], capture: true, pendingCharge: null
+    };
+    var timers = { meters: null, hist: null };
+    var diagInterval = null;
+
+    /* ---------- dom helpers ---------- */
+    function $(id){ return document.getElementById(id); }
+    function toast(msg, kind){
+      var t = $('toast'); t.textContent = msg; t.className = 'toast show' + (kind?(' '+kind):'');
+      clearTimeout(t._h); t._h = setTimeout(function(){ t.className = 'toast'; }, 2200);
+    }
+    function setStatus(pill, ok){
+      $('statusPill').className = 'statuspill ' + (ok?'ok':'err');
+      $('statusPill').textContent = pill;
+    }
+    function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];}); }
+
+    /* ---------- fetch layer (replicates both POST conventions) ---------- */
+    function getEp(name){
+      return fetch(C.endpointUrl(base, name), { cache:'no-store' })
+        .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); });
+    }
+    function postHeader(name, data){
+      var opts = C.buildHeaderPost(data);
+      return fetch(C.endpointUrl(base, name), { method:'POST', headers:opts.headers, body:JSON.stringify(opts.body), cache:'no-store' })
+        .then(function(r){ return r.json(); });
+    }
+    function postBody(name, bodyStr){
+      var opts = C.buildBodyPost(bodyStr);
+      return fetch(C.endpointUrl(base, name), { method:'POST', headers:opts.headers, body:opts.body, cache:'no-store' })
+        .then(function(r){ return r.json(); });
+    }
+
+    /* ---------- theme ---------- */
+    function applyTheme(theme){
+      if(theme==='dark' || theme==='light'){ document.documentElement.setAttribute('data-theme', theme); }
+      else { document.documentElement.removeAttribute('data-theme'); }
+    }
+    function initTheme(){
+      var saved = localStorage.getItem('evx_theme'); // 'dark'|'light'|null(auto)
+      applyTheme(saved);
+      $('themeBtn').textContent = saved==='dark' ? '☀' : (saved==='light' ? '☾' : '◐');
+    }
+    $('themeBtn').addEventListener('click', function(){
+      var saved = localStorage.getItem('evx_theme') || getAutoTheme();
+      var next = (saved==='dark') ? 'light' : (saved==='light' ? null : 'dark');
+      if(next===null){ localStorage.removeItem('evx_theme'); } else { localStorage.setItem('evx_theme', next); }
+      applyTheme(next);
+      $('themeBtn').textContent = next==='dark' ? '☀' : (next==='light' ? '☾' : '◐');
+    });
+    function getAutoTheme(){ return (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light'; }
+
+    /* ---------- status + charge toggle ---------- */
+    function pollStatus(){
+      getEp(END.status).then(function(d){
+        state.status = d && d.DATA;
+        setStatus(state.status || 'Connecting', true);
+        updateChargeToggle();
+        capture();
+      }).catch(function(){ setStatus('Offline', false); state.chargingNow=false; updateChargeToggle(); });
+    }
+    function pollMeters(){
+      getEp(END.meters).then(function(d){
+        if(d && d.data){ state.meters = {}; (d.data||[]).forEach(function(m){ if(m.enable!==false) state.meters[m.name]=m; }); }
+        renderMeters();
+      }).catch(function(){});
+    }
+    function capture(){
+      if(!state.capture) return;
+      var t = Date.now();
+      (Object.keys(state.meters)).forEach(function(name){
+        var m = state.meters[name];
+        var d = C.decodeMeter(m);
+        ring.push({ _key: name+'-'+t, timestamp:t, name:name, unit:d.unit, value:d.value, raw:d.raw });
+      });
+      updateDataCount();
+    }
+
+    function updateChargeToggle(){
+      var btn = $('chargeMain');
+      var avail = Object.values(state.meters).find(function(m){ return m.name==='Availability'; });
+      var cur = Object.values(state.meters).find(function(m){ return m.name==='Charging Current A'; });
+      var charging = cur && C.decodeMeter(cur).value > 0.05;
+      state.chargingNow = charging || state.pendingCharge;
+      if(state.chargingNow){ btn.className='chargetoggle stop'; btn.querySelector('.big').textContent='■'; btn.querySelector('.t').textContent='Stop Charging'; }
+      else { btn.className='chargetoggle start'; btn.querySelector('.big').textContent='▶'; btn.querySelector('.t').textContent='Start Charging'; }
+      $('chargeStateText').textContent = 'Status: ' + (state.status || 'unknown') + ' | ' + (charging?'charging':'idle');
+    }
+    $('chargeMain').addEventListener('click', function(){
+      var wantStart = !state.chargingNow;
+      state.pendingCharge = wantStart;
+      postHeader(END.remote, { XDATA: wantStart?1:0 }).then(function(){
+        toast(wantStart ? 'Start Charging!' : 'Stopped Charging!', 'ok');
+      }).catch(function(){ toast('Command failed', 'err'); })
+        .finally(function(){ setTimeout(function(){ state.pendingCharge=null; updateChargeToggle(); pollStatus(); }, 800); });
+    });
+
+    /* ---------- meters render ---------- */
+    function renderMeters(){
+      var grid = $('meterGrid'); grid.innerHTML='';
+      Object.keys(state.meters).forEach(function(name){
+        var d = C.decodeMeter(state.meters[name]);
+        var el = document.createElement('div'); el.className='meter';
+        el.innerHTML = '<div class="mname">'+esc(name)+'</div><div class="mval">'+esc(d.value)+'<span class="munit">'+esc(d.unit)+'</span></div>';
+        grid.appendChild(el);
+      });
+      drawChart();
+    }
+
+    /* ---------- chart ---------- */
+    function drawChart(){
+      var cv = $('energyChart'); if(!cv) return;
+      var ctx = cv.getContext('2d');
+      var w = cv.width, h = cv.height;
+      ctx.clearRect(0,0,w,h);
+      var energy = Object.values(state.meters).find(function(m){ return m.name==='Charging Energy'; });
+      var cur = Object.values(state.meters).find(function(m){ return m.name==='Charging Current A'; });
+      var live = cur ? C.decodeMeter(cur).value : 0;
+      var be = energy ? C.decodeMeter(energy).value : 0;
+      // area for energy
+      var maxE = Math.max(1, be||1);
+      ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--acc2')||'#4a9dff';
+      ctx.fillRect(0, h-10, w, 10);
+      // bar for current
+      var maxC = 40;
+      var barW = Math.max(4, w*0.02), gap=4, x=4;
+      var maxBars = Math.floor(w/(barW+gap));
+      var samples = ring.all().filter(function(r){ return r.name==='Charging Current A'; }).slice(-maxBars);
+      if(samples.length){
+        samples.forEach(function(s){
+          var bh = Math.max(2,(s.value/maxC)*(h-10));
+          ctx.fillStyle = '#4a9dff';
+          ctx.fillRect(x, h-bh, barW, bh);
+          x += barW+gap;
+        });
+      }
+    }
+
+    /* ---------- availability switch ---------- */
+    $('availSwitch').addEventListener('click', function(){
+      var on = !this.classList.contains('on');
+      postHeader(END.availability, { XDATA: on?1:0 }).then(function(){ this.classList.toggle('on', on); }.bind(this)).catch(function(){ toast('Failed','err'); });
+    });
+
+    /* ---------- phase ---------- */
+    $('phaseApply').addEventListener('click', function(){
+      postHeader(END.setting, { chargerPhase: $('phaseSel').value }).then(function(){ toast('Phase set','ok'); }).catch(function(){ toast('Failed','err'); });
+    });
+
+    /* ---------- logo ---------- */
+    function initLogo(){
+      var sel=$('logoSel'); sel.innerHTML='';
+      C.LOGO_COLORS.forEach(function(c,i){ var o=document.createElement('option'); o.value=i; o.textContent=c.name; sel.appendChild(o); });
+      sel.value='7';
+      $('logoPreview').textContent = C.LOGO_COLORS[7].HEX;
+    }
+    $('logoSel').addEventListener('change', function(){ $('logoPreview').textContent = C.LOGO_COLORS[Number(this.value)].HEX; });
+    $('logoApply').addEventListener('click', function(){
+      postHeader(END.setting, { logoColor: $('logoSel').value }).then(function(){ toast('Logo set','ok'); }).catch(function(){ toast('Failed','err'); });
+    });
+
+    /* ---------- load management ---------- */
+    function lmApply(){
+      var mode = Number($('lmMode').value);
+      var lm = state.loadMgmt || {};
+      var payload = {
+        mode: mode,
+        DLBstatus: mode===2?1:(lm.DLBstatus||0),
+        DLBpercentage: Number($('dlbSlider').value),
+        MLMstatus: mode===1?1:(lm.MLMstatus||0),
+        MLMlimitLower: lm.MLMlimitLower||6,
+        MLMlimitUpper: lm.MLMlimitUpper||32,
+        MLMcurrentLimit: Number($('lmSlider').value)
+      };
+      postBody(END.loadManagement, C.buildLoadManagementPayload(payload))
+        .then(function(){ toast('Load mgmt set','ok'); loadMgmtGet(); })
+        .catch(function(){ toast('Failed','err'); });
+    }
+    $('lmApply').addEventListener('click', lmApply);
+    $('lmSlider').addEventListener('input', function(){ $('lmLimitVal').textContent = this.value + ' A'; });
+    function loadMgmtGet(){
+      getEp(END.loadManagement).then(function(d){
+        if(d && d.data && d.data[0]){ state.loadMgmt = d.data[0]; }
+        var lm = state.loadMgmt;
+        $('lmMode').value = String(lm.mode||0);
+        if(lm.MLMcurrentLimit){ $('lmSlider').value = lm.MLMcurrentLimit; $('lmLimitVal').textContent = lm.MLMcurrentLimit+' A'; }
+        $('dlbSlider').value = lm.DLBpercentage||50; $('dlbVal').textContent = (lm.DLBpercentage||50)+'%';
+      }).catch(function(){});
+    }
+    $('lmMode').addEventListener('change', function(){
+      var mode = Number(this.value);
+      $('lmLimitRow').style.display = mode===1 ? 'flex' : 'none';
+      var haveClamp = (state.supportlist['CT Clamp']==null?0:state.supportlist['CT Clamp'])===0;
+      $('lmWarn').style.display = (mode===2 && haveClamp) ? 'block':'none';
+    });
+
+    /* ---------- schedule ---------- */
+    function schedGet(){ return getEp(END.schedule); }
+    function renderSchedule(){
+      var sc = state.schedule;
+      var core = sc.filter(function(s){return s.type===0;});
+      var boost = sc.find(function(s){return s.type===1;});
+      var solar = sc.filter(function(s){return s.type===2;});
+      var hasSolar = state.supportlist.Solar === 1;
+
+      $('schedHint').textContent = sc.length ? ('Loaded '+sc.length+' schedule entries.') : 'No schedule loaded.';
+
+      // boost
+      if(boost){
+        $('boostSwitch').classList.toggle('on', !!boost.status);
+        $('boostStop').value = C.secToTimeText(boost.stop);
+        $('boostCurrent').value = boost.current;
+      } else {
+        $('boostSwitch').classList.remove('on');
+        $('boostStop').value = '07:00';
+        $('boostCurrent').value = 7;
+      }
+
+      // core rows
+      var ch = '';
+      core.forEach(function(s,i){
+        ch += '<div class="schedrow" data-sched="core-'+i+'">';
+        ch += '<div><div style="font-weight:700;">'+esc(C.DAYS[s.dow]||s.dow)+'</div><div class="muted">'+(s.status?'Enabled':'Disabled')+'</div></div>';
+        ch += '<div class="row" style="justify-content:center;"><input type="time" data-key="core-'+i+'" data-f="start" value="'+C.secToTimeText(s.start)+'"><span class="muted">→</span><input type="time" data-key="core-'+i+'" data-f="stop" value="'+C.secToTimeText(s.stop)+'"></div>';
+        ch += '<div style="text-align:right;"><input type="number" data-key="core-'+i+'" data-f="current" min="1" value="'+esc(s.current)+'" style="width:64px;"></div>';
+        ch += '<div class="row" style="grid-column:1/-1;justify-content:flex-end;"><span class="muted">Enable</span><div class="switch '+(s.status?'on':'')+'" data-key="core-'+i+'" data-f="status" data-sw></div></div>';
+        ch += '</div>';
+      });
+      $('coreBody').innerHTML = ch || '<div class="muted">No core schedules.</div>';
+
+      // solar rows
+      var sh = '';
+      solar.forEach(function(s,i){
+        sh += '<div class="schedrow" data-sched="solar-'+i+'">';
+        sh += '<div><div style="font-weight:700;">'+esc(C.DAYS[s.dow]||s.dow)+'</div></div>';
+        sh += '<div class="row" style="justify-content:center;"><input type="time" data-key="solar-'+i+'" data-f="start" value="'+C.secToTimeText(s.start)+'"><span class="muted">→</span><input type="time" data-key="solar-'+i+'" data-f="stop" value="'+C.secToTimeText(s.stop)+'"></div>';
+        sh += '<div style="text-align:right;"><input type="number" data-key="solar-'+i+'" data-f="current" min="1" value="'+esc(s.current)+'" style="width:64px;"></div>';
+        sh += '<div style="grid-column:1/-1;text-align:right;"><span class="muted">Enable</span><div class="switch '+(s.status?'on':'')+'" data-key="solar-'+i+'" data-f="status" data-sw></div></div>';
+        sh += '</div>';
+      });
+      $('solarBody').innerHTML = sh || '<div class="muted">No solar schedules.</div>';
+      $('solarCard').style.display = hasSolar ? 'block' : 'none';
+
+      // wire toggles (visually) — values read on save
+      Array.prototype.forEach.call(document.querySelectorAll('[data-sw]'), function(sw){
+        sw.addEventListener('click', function(){ sw.classList.toggle('on'); });
+      });
+    }
+
+    function schedSave(){
+      var sc = state.schedule;
+      // boost
+      var boost = sc.find(function(s){return s.type===1;});
+      if(boost){
+        boost.status = $('boostSwitch').classList.contains('on')?1:0;
+        boost.stop = C.timeTextToSec($('boostStop').value);
+        boost.current = Number($('boostCurrent').value)||7;
+        boost.start = Math.floor(C.timeTextToSec(new Date().toLocaleTimeString('en-US',{hour12:false}))/60)*60;
+        boost.dow = 0;
+      }
+      // core + solar: match DOM inputs to stored entries by their index-in-type
+      var coreIdx=0, solarIdx=0;
+      sc.forEach(function(s){
+        if(s.type===0){
+          readSchedRow(s, 'core-'+coreIdx); coreIdx++;
+        } else if(s.type===2){
+          readSchedRow(s, 'solar-'+solarIdx); solarIdx++;
+        }
+      });
+      postBody(END.schedule, C.buildSchedulePayload(sc)).then(function(){
+        toast('Schedule saved','ok');
+        schedGet().then(function(d){ if(d&&d.data) state.schedule=C.parseSchedule(d.data,d.size); renderSchedule(); });
+      }).catch(function(){ toast('Save failed','err'); });
+    }
+    function readSchedRow(s, key){
+      var g = function(f){ var el=document.querySelector('[data-key="'+key+'"][data-f="'+f+'"]'); return el?el.value:null; };
+      if(g('start')!=null) s.start = C.timeTextToSec(g('start'));
+      if(g('stop')!=null)  s.stop  = C.timeTextToSec(g('stop'));
+      if(g('current')!=null) s.current = Number(g('current'))||s.current;
+      var sw = document.querySelector('[data-key="'+key+'"][data-f="status"]');
+      if(sw) s.status = sw.classList.contains('on')?1:0;
+    }
+    $('schedSave').addEventListener('click', schedSave);
+    $('schedRefresh').addEventListener('click', function(){ refreshSchedule(); });
+
+    /* ---------- history ---------- */
+    function renderHist(){
+      var tb = $('histTable').querySelector('tbody'); var th = $('histTable').querySelector('thead');
+      th.innerHTML = '<tr><th>Auth</th><th>Type</th><th>Date</th><th>Start</th><th>Duration</th><th>Energy</th></tr>';
+      tb.innerHTML='';
+      if(!state.hist.length){ $('histEmpty').textContent='No history records.'; return; }
+      $('histEmpty').textContent='';
+      state.hist.forEach(function(r){
+        var tr=document.createElement('tr');
+        tr.innerHTML='<td>'+esc(r.authId)+'</td><td>'+esc(C.CHARGING_TYPE[r.type]||r.type)+'</td><td>'+esc(r.date)+'</td><td>'+C.secToTimeText(r.start)+'</td><td>'+C.secToTimeText(r.duration)+'</td><td>'+esc(parseFloat((r.energy/1000).toFixed(2)))+' kWh</td>';
+        tb.appendChild(tr);
+      });
+    }
+    function renderLog(){
+      var tb = $('logTable').querySelector('tbody'); var th = $('logTable').querySelector('thead');
+      th.innerHTML='<tr><th>Date time</th><th>Name</th><th>Value</th></tr>'; tb.innerHTML='';
+      if(!state.log.length){ $('logEmpty').textContent='No log entries.'; return; }
+      $('logEmpty').textContent='';
+      state.log.forEach(function(r){
+        var v;
+        if(r.disp===1){ v='0x'+Number(r.data).toString(16); }
+        else if(r.disp===2){ v=Number(r.data).toString(2); }
+        else { v=esc(r.data); }
+        var tr=document.createElement('tr');
+        tr.innerHTML='<td>'+esc(r.date)+' '+C.secToTimeText(r.time)+'</td><td>'+esc(r.desc)+'</td><td>'+v+'</td>';
+        tb.appendChild(tr);
+      });
+    }
+
+    /* ---------- data / capture ---------- */
+    function updateDataCount(){
+      var count=ring.count();
+      var last=ring.last();
+      $('dataCount').textContent = count+' samples'+(last?(' • last '+new Date(last.timestamp).toLocaleTimeString()):'');
+    }
+    $('captureToggle').addEventListener('click', function(){
+      state.capture=!state.capture;
+      $('captureToggle').textContent = state.capture?'⏸':'▶';
+      $('dataInfo').textContent = state.capture?'Capturing meter snapshots (ring buffer).':'Capture paused.';
+      toast(state.capture?'Capture on':'Capture paused');
+    });
+    $('exportCsv').addEventListener('click', function(){ download('evc-data.csv', C.metersToCsv(ring.all()), 'text/csv'); });
+    $('exportJson').addEventListener('click', function(){ download('evc-data.json', C.metersToJson(ring.all()), 'application/json'); });
+    $('clearData').addEventListener('click', function(){ ring.clear(); updateDataCount(); toast('Cleared','ok'); });
+    function download(name, content, type){
+      var blob = new Blob([content], {type:type});
+      var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download=name; a.click();
+      setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
+    }
+
+    /* ---------- DEV: nfc bypass ---------- */
+    $('bypassSwitch').addEventListener('click', function(){
+      var on = !this.classList.contains('on');
+      postHeader(END.setting, { bypassNFC: on?1:0 }).then(function(){ this.classList.toggle('on', on); toast('NFC bypass '+(on?'on':'off'),'ok'); }.bind(this)).catch(function(){ toast('Failed','err'); });
+    });
+
+    /* ---------- DEV: random delay ---------- */
+    function initRand(){
+      var sel=$('rdSel'); sel.innerHTML='';
+      sel.appendChild(new Option('0 s (off)',0));
+      for(var i=50;i<=1800;i+=50){ sel.appendChild(new Option(i+' s', i)); }
+      getEp(END.randomdelay).then(function(d){ if(d&&d.DATA!=null) sel.value=String(d.DATA); }).catch(function(){});
+    }
+    $('rdApply').addEventListener('click', function(){
+      postHeader(END.randomdelay, { XDATA: Number($('rdSel').value) }).then(function(){ toast('Random delay set','ok'); }).catch(function(){ toast('Failed','err'); });
+    });
+
+    /* ---------- DEV: dlb ---------- */
+    $('dlbSlider').addEventListener('input', function(){ $('dlbVal').textContent=this.value+'%'; });
+    $('dlbApply').addEventListener('click', function(){
+      var lm = state.loadMgmt||{};
+      var payload={ mode:2, DLBstatus:1, DLBpercentage:Number($('dlbSlider').value), MLMstatus:0, MLMlimitLower: lm.MLMlimitLower||6, MLMlimitUpper:lm.MLMlimitUpper||32, MLMcurrentLimit: lm.MLMcurrentLimit||12 };
+      postBody(END.loadManagement, C.buildLoadManagementPayload(payload)).then(function(){ toast('Dynamic set','ok'); loadMgmtGet(); }).catch(function(){ toast('Failed','err'); });
+    });
+
+    /* ---------- DEV: diagnostics ---------- */
+    function diagRender(mask){
+      var r = C.parseDiagnosticBitmask(mask);
+      var g=$('diagGrid'); g.innerHTML='';
+      r.checks.forEach(function(c){
+        var cls = c.index===0 ? (r.ran?'pass':'unknown') : (c.failed?'fail':'pass');
+        var txt = c.index===0 ? (r.ran?'Completed':'Not run') : (c.failed?'Failed':'Pass');
+        var el=document.createElement('div'); el.className='diagitem';
+        el.innerHTML='<div class="dn">'+esc(c.name)+'</div><div class="dv '+cls+'">'+txt+'</div>';
+        g.appendChild(el);
+      });
+    }
+    $('diagStart').addEventListener('click', function(){
+      postHeader(END.diagnostic, { start:1 }).then(function(){
+        toast('Diagnostics running…');
+        if(diagInterval) clearInterval(diagInterval);
+        diagInterval=setInterval(function(){
+          getEp(END.diagnostic).then(function(d){
+            if(d && d.status===1){ clearInterval(diagInterval); diagRender(d.result); toast('Diagnostics done','ok'); }
+          }).catch(function(){});
+        }, 3000);
+        setTimeout(function(){ if(diagInterval){ clearInterval(diagInterval); } }, 60000);
+      }).catch(function(){ toast('Diag failed','err'); });
+    });
+
+    /* ---------- DEV: pwm ---------- */
+    function clampPwm(v){ return Math.max(0, Math.min(8180, Math.abs(Number(v))||0)); }
+    $('pwmApply').addEventListener('click', function(){
+      var vals = { r:clampPwm($('pwmR').value), g:clampPwm($('pwmG').value), b:clampPwm($('pwmL').value) };
+      var opts = C.buildHeaderPost(vals); opts.method='POST';
+      fetch(C.endpointUrl(base, END.debug), { method:'POST', headers:opts.headers, body:JSON.stringify({timestamp:Date.now()}), cache:'no-store' })
+        .then(function(){ toast('PWM applied','ok'); }).catch(function(){ toast('Failed','err'); });
+    });
+
+    /* ---------- DEV: profile ---------- */
+    function profileRender(){
+      var b=$('profileBody'); b.innerHTML='';
+      state.profile.forEach(function(p,i){
+        var row=document.createElement('div'); row.className='schedrow'; row.style.gridTemplateColumns='1fr';
+        row.innerHTML='<div class="row" style="flex-wrap:wrap;">'
+          +'<input type="text" data-pf="name" data-i="'+i+'" value="'+esc(p.name)+'" placeholder="Name" style="flex:1;min-width:100px;">'
+          +'<select data-pf="dow" data-i="'+i+'">'+ C.DAYS.map(function(d,k){return '<option value="'+k+'"'+(Number(p.dow)===k?' selected':'')+'>'+esc(d)+'</option>';}).join('')+'</select>'
+          +'</div>'
+          +'<div class="row" style="margin-top:8px;">'
+          +'<span class="muted">Start</span><input type="time" data-pf="start" data-i="'+i+'" value="'+C.secToTimeText(p.start)+'">'
+          +'<span class="muted">Stop</span><input type="time" data-pf="stop" data-i="'+i+'" value="'+C.secToTimeText(p.stop)+'">'
+          +'<input type="number" data-pf="current" data-i="'+i+'" min="1" value="'+esc(p.current)+'" style="width:64px;">'
+          +'<div class="switch '+(p.status?'on':'')+'" data-pf="status" data-i="'+i+'"></div>'
+          +'</div>';
+        b.appendChild(row);
+      });
+      Array.prototype.forEach.call(document.querySelectorAll('[data-pf]'), function(el){
+        if(el.classList.contains('switch')){ el.addEventListener('click',function(){ el.classList.toggle('on'); }); }
+      });
+    }
+    $('profileSave').addEventListener('click', function(){
+      state.profile.forEach(function(p,i){
+        var g=function(f){ var el=document.querySelector('[data-pf="'+f+'"][data-i="'+i+'"]'); return el?el.value:null; };
+        var nameEl=document.querySelector('[data-pf="name"][data-i="'+i+'"]');
+        p.name = nameEl?nameEl.value:p.name;
+        p.dow = Number(g('dow'))||0;
+        p.start = C.timeTextToSec(g('start'));
+        p.stop = C.timeTextToSec(g('stop'));
+        p.current = Number(g('current'))||1;
+        var sw=document.querySelector('[data-pf="status"][data-i="'+i+'"]');
+        p.status = sw&&sw.classList.contains('on')?1:0;
+        if(p.name.length>10) p.name=p.name.slice(0,10);
+        // sanitize: strip commas/pipes to avoid CSV corruption
+        p.name = String(p.name).replace(/[|]/g,'').replace(/,/g,'');
+      });
+      postBody(END.profiles, C.buildProfilePayload(state.profile)).then(function(){
+        toast('Profiles saved','ok'); profileGet().then(function(){ profileRender(); });
+      }).catch(function(){ toast('Save failed','err'); });
+    });
+
+    /* ---------- general / support ---------- */
+    function generalGet(){
+      return getEp(END.general).then(function(d){
+        if(d && d.data){ state.general = d.data.general||{}; state.supportlist = d.data.list||{}; }
+      }).catch(function(){});
+    }
+
+    /* ---------- loaders ---------- */
+    function refreshSchedule(){
+      schedGet().then(function(d){ if(d&&d.data) state.schedule=C.parseSchedule(d.data,d.size); renderSchedule(); }).catch(function(){});
+    }
+    function profileGet(){ return getEp(END.profiles).then(function(d){ if(d&&d.data) state.profile=C.parseProfile(d.data,d.size); }); }
+    function loadAll(){
+      pollStatus(); pollMeters(); loadMgmtGet(); refreshSchedule(); generalGet().then(function(){ renderSchedule(); initLogo(); });
+    }
+
+    /* ---------- nav ---------- */
+    document.querySelectorAll('.navitem').forEach(function(b){
+      b.addEventListener('click', function(){
+        document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
+        document.querySelectorAll('.navitem').forEach(function(n){n.classList.remove('active');});
+        $('page-'+b.dataset.page).classList.add('active');
+        b.classList.add('active');
+        if(b.dataset.page==='history'){ histRefreshNow(); }
+        if(b.dataset.page==='dev'){ profileGet().then(function(){ profileRender(); }); }
+      });
+    });
+    function histRefreshNow(){
+      getEp(END.history).then(function(d){ if(d&&d.data) state.hist=d.data; renderHist(); }).catch(function(){});
+      getEp(END.log).then(function(d){ if(d&&d.data) state.log=d.data; renderLog(); }).catch(function(){});
+    }
+    $('histRefresh').addEventListener('click', histRefreshNow);
+    $('logRefresh').addEventListener('click', function(){ getEp(END.log).then(function(d){ if(d&&d.data) state.log=d.data; renderLog(); }).catch(function(){}); });
+    $('refreshMeters').addEventListener('click', pollMeters);
+
+    /* ---------- device time ---------- */
+    $('syncTime').addEventListener('click', function(){
+      var date=new Date();
+      var data={ t:date.getTime(), tzo:date.getTimezoneOffset(), tz:Intl.DateTimeFormat().resolvedOptions().timeZone, iso:date.toISOString(), lts:date.toLocaleTimeString('en-US',{hour12:false}) };
+      postHeader(END.infoTime, data).then(function(){ toast('Time synced','ok'); }).catch(function(){ toast('Failed','err'); });
+    });
+    function pollTime(){
+      getEp(END.infoTime).then(function(d){ if(d&&d.DATA){ var t=C.secToTimeText(d.DATA); $('deviceTime').textContent=t.replace(/:\d{2}$/,''); } }).catch(function(){});
+    }
+
+    /* ---------- init ---------- */
+    initTheme(); initLogo(); initRand();
+    loadAll();
+    timers.meters = setInterval(function(){ pollStatus(); pollMeters(); }, 2500);
+    timers.hist = setInterval(pollTime, 5000);
+    updateDataCount();
+    // daily auto clear guard
+    setStatus('Connecting…', true);
+  })();
+  </script>
+</body>
+</html>
