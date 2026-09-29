@@ -1,15 +1,26 @@
 {
-  "name": "evc-charger-client",
-  "version": "1.0.0",
-  "description": "Reverse-engineered client for the Salus Core EV Charger web API (AP mode).",
+  "name": "salus-core-evc-hk-remote",
+  "version": "1.1.0",
+  "description": "Independent hobby web client to monitor and control a Salus Core EV Charger over its on-device web API (AP mode, Hong Kong). Reverse-engineered. Not affiliated with Salus. No warranty.",
   "private": true,
   "type": "commonjs",
+  "author": "Jacky Keung",
+  "license": "MIT",
   "scripts": {
     "test": "node --test --experimental-test-coverage tests/",
     "test:core": "node --test --experimental-test-coverage tests/client.test.js",
     "test:dash": "node --test tests/dashboard.test.js",
-    "mock": "node tests/mock-server.js"
+    "mock": "node tests/mock-server.js",
+    "start": "node tests/mock-server.js"
   },
+  "keywords": [
+    "ev-charger",
+    "salus-core",
+    "evc",
+    "ap-mode",
+    "reverse-engineered",
+    "hobby"
+  ],
   "engines": {
     "node": ">=18"
   }

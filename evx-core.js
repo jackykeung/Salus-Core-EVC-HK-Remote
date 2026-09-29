@@ -17,6 +17,7 @@
 })(typeof self !== "undefined" ? self : this, function () {
   "use strict";
 
+  var VERSION = "1.1.0";
   var DEFAULT_BASE = "http://192.168.3.1/evcWebApp/";
 
   /* ---- constants reproduced from the original app ---- */
@@ -292,6 +293,7 @@
   }
 
   return {
+    VERSION: VERSION,
     DEFAULT_BASE: DEFAULT_BASE,
     DAYS: DAYS,
     CHARGING_TYPE: CHARGING_TYPE,
